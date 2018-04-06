@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 
 class Video(object):
 
-    def __init__(self, filename, isAnomaly, width=320, height=240):
+    def __init__(self, filename, isAnomaly, width=320, height=240,**kwargs):
         if filename is None:
             raise ValueError("invalid filename argument")
         self.isAnomaly=isAnomaly
@@ -26,13 +26,22 @@ class Video(object):
         self.frameCount = 0
         self.width = width
         self.height = height
+        self.fileLocation = kwargs.get('fileLocation',"")
+
+
         self.__setFrames()
 
 
+
     def __split(self):
-        if os.path.exists('dataset/videos/'+self.filename) is False:
-            raise ValueError("Video File Not Found")
-        videoSource = cv2.VideoCapture('dataset/videos/'+self.filename)
+
+        if os.path.exists(self.fileLocation) is False:
+            print(self.fileLocation)
+            raise ValueError("Video File Not Found ")
+
+        #if os.path.exists('dataset/videos/'+self.filename) is False:
+         #   raise ValueError("Video File Not Found")
+        videoSource = cv2.VideoCapture(self.fileLocation)
         success,image = videoSource.read() #success is true if file exist, and loads first frame in image
         count = 0
         dir = os.path.splitext("dataset/" + self.filename)[0] #gets the directory location
@@ -63,7 +72,7 @@ class Video(object):
         dir = os.path.splitext("dataset/" + self.filename)[0]  # gets the directory location
         if os.path.isdir(dir) is False:
             self.__split()
-
+        """
         count = len(os.listdir(dir)) #count list of files inside directory
 
         imageArr=[]
@@ -74,7 +83,7 @@ class Video(object):
 
         self.frames=imageArr
         self.frameCount = len(imageArr)
-
+        """
     def getFrames(self):
         return np.array(self.frames)
 

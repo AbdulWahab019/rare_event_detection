@@ -20,7 +20,7 @@ class dataset:
         self.training=[]
         self.testing=[]
         self.video=[]
-        self.__set_data()
+       # self.__set_data()
 
     def addVideo(self,filename,isAnomaly):
 
@@ -43,26 +43,33 @@ class dataset:
         if isAnomaly>1 or isAnomaly < 0:
             raise ValueError("invalid anomaly argument")
 
-        vid = Video(filename,isAnomaly)
+
 
         loc="dataset/videos/"+filename
-        if os.path.exists("dataset/data.csv") is False:
-            with open('dataset/data.csv', 'w') as f:
+
+        ucfLocation = "C:/Users/Administrator/Downloads/Compressed/UCF_Crimes/UCF_Crimes/Videos/Training_Normal_Videos_Anomaly/"+filename
+        if os.path.exists(ucfLocation) is True:
+
+            vid = Video(filename, isAnomaly, fileLocation=ucfLocation)
+
+            if os.path.exists("dataset/data.csv") is False:
+                with open('dataset/data.csv', 'w') as f:
+                    writer = csv.writer(f)
+                    writer.writerow(["Video Location", "is Anomaly"])
+
+            with open('dataset/data.csv', 'r') as f:
+                reader = csv.reader(f)
+                for row in reader:
+                    if len(row)>0:
+                        if loc==row[0]:
+                            raise ValueError("Entry already exist")
+
+
+            with open('dataset/data.csv', 'a') as f:
                 writer = csv.writer(f)
-                writer.writerow(["Video Location", "is Anomaly"])
+                writer.writerow([loc,isAnomaly.bit_length()])
 
-        with open('dataset/data.csv', 'r') as f:
-            reader = csv.reader(f)
-            for row in reader:
-                if loc==row[0]:
-                    raise ValueError("Entry already exist")
-
-
-        with open('dataset/data.csv', 'a') as f:
-            writer = csv.writer(f)
-            writer.writerow([loc,isAnomaly.bit_length()])
-
-        self.__set_data()
+       # self.__set_data()
 
         return True
 
@@ -89,10 +96,11 @@ class dataset:
             with open('dataset/data.csv', 'r') as f:
                 reader = csv.reader(f)
                 for row in reader:
-                    if fileLoc==row[0]:
-                        found=True
-                        continue
-                    row_list.append(row)
+                    if len(row)>0:
+                        if fileLoc==row[0]:
+                            found=True
+                            continue
+                        row_list.append(row)
 
             with open('dataset/data.csv', 'w') as f:
                 writer = csv.writer(f)
@@ -118,11 +126,14 @@ class dataset:
                 for row in reader:
                     row_list.append(row)
 
+            videoCount=0
             for i in range(len(row_list)):
-                filename = os.path.basename(row_list[i][0])
-                anomaly = os.path.basename(row_list[i][1])
-                vid = Video(filename,anomaly)
-                self.video.append(vid)
+                if len(row_list[i])>0:
+                    filename = os.path.basename(row_list[i][0])
+                    anomaly = os.path.basename(row_list[i][1])
+                    vid = Video(filename,anomaly)
+                    self.video.append(vid)
+                    videoCount+=1
 
             #numpy.random.shuffle(self.video)
             training = []
@@ -132,7 +143,7 @@ class dataset:
                 training.append(self.video[i])
             self.training=training
             testing=[]
-            for i in range(train_length,len(row_list)):
+            for i in range(train_length,videoCount):
                 testing.append(self.video[i])
             self.testing=testing
 
@@ -202,12 +213,22 @@ class dataset:
 
 if __name__ == "__main__":
     ds = dataset()
-    ds.addVideo("SampleVideo_1280x720_1mb.mp4",True)
+    count = 951
+    #notInFolder = (3,6,10,14,15,18,19,24,25,27,33,34,42,48,50,51)
+    for index in range(41,count):
+        #if index not in notInFolder:
+        num = "%03d" % index
+        filename="Normal_Videos"+num+"_x264.mp4"
+        print("Adding file "+filename)
+        ds.addVideo(filename, False)
+
+    #ds.addVideo("Abuse000_x264.mp4",True)
     #ds.addVideo("big_buck_bunny_720p_5mb.mp4", False)
     #ds.addVideo("SampleVideo_1280x720_2mb.mp4", False)
     #ds.removeVideo("SampleVideo_1280x720_2mb.mp4")
     #ds.removeVideo("SampleVideo_1280x720_1mb.mp4")
     #ds.removeVideo("big_buck_bunny_720p_5mb.mp4")
+    """
     training = ds.getTraining()
     testing = ds.getTesting()
     if(len(training)>0):
@@ -241,7 +262,7 @@ if __name__ == "__main__":
 
         for i in range(len(testing)):
             print(testing[i])
-
+     """
     #ds.removeVideo("SampleVideo_1280x720_2mb.mp4")
     #ds.removeVideo("SampleVideo_1280x720_1mb.mp4")
     #ds.removeVideo("big_buck_bunny_720p_5mb.mp4")
