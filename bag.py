@@ -29,16 +29,16 @@ class Bag(object):
         frames = vid.getFrames()
 
         addedFramesCount=0
-        framesInEachSection = 4 #int (framesCount/self.split)
+        framesInEachSection = int (framesCount/self.split)
         for i in range(self.split):
             frameArr=[]
             for j in range(addedFramesCount,addedFramesCount+framesInEachSection):
                 frameArr.append(frames[j])
             self.bag.append(frameArr)
             addedFramesCount=addedFramesCount+framesInEachSection
-        print("Frames in each segment: %d" %len(self.bag[0]))
-        print("Total Frames Added: %d" %addedFramesCount)
-        print("Out of %d Total Frames in the video" %framesCount)
+        #print("Frames in each segment: %d" %len(self.bag[0]))
+        #print("Total Frames Added: %d" %addedFramesCount)
+        #print("Out of %d Total Frames in the video" %framesCount)
 
 
 
@@ -76,9 +76,9 @@ class Bag(object):
         return self.bag
 
     def getSegments(self):
-        segments = []
-        for segment in self.bag:
-            segments.append(np.array(segment))
+        count = self.video.getFrameCount()
+        frames = np.array(self.video.getFrames()[:-(count%16)])
+        segments = frames.reshape([-1, 16, 112, 112, 3])
         return segments
 
     def resize(self, width, height):
@@ -92,4 +92,3 @@ class Bag(object):
 #     image=bag[31][22]
 #     plt.imshow(image)
 #     plt.show()
-

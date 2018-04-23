@@ -13,7 +13,7 @@ Attributes:
 import cv2
 import os
 import numpy as np
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 class Video(object):
 
@@ -31,7 +31,7 @@ class Video(object):
 
     def __split(self):
         if os.path.exists('dataset/videos/'+self.filename) is False:
-            raise ValueError("Video File Not Found")
+            raise ValueError("Video File Not Found. Could not find: %s" % ('dataset/videos/'+self.filename))
         videoSource = cv2.VideoCapture('dataset/videos/'+self.filename)
         success,image = videoSource.read() #success is true if file exist, and loads first frame in image
         count = 0
@@ -43,7 +43,7 @@ class Video(object):
             cv2.imwrite(dir+"/frame%d.jpg" %count,resize_image)
             success, image = videoSource.read()
             count+=1
-        print("Read %d Frames" %count)
+        #print("Read %d Frames" %count)
         return count
 
 
@@ -89,6 +89,25 @@ class Video(object):
 
     def resize(self, new_width, new_height):
         self.frames = [cv2.resize(frame, (new_width, new_height)) for frame in self.frames]
+
+    def getSegments(self):
+        count = self.getFrameCount()
+        print("Getting segments:", count, " total frames.")
+        frames = np.array(self.getFrames())
+        print("FRAMES SHAPE: %s" % (str(frames.shape)))
+        if count % 16 != 0:
+            print("REMOVING FRAMES: %d" % (count%16))
+            frames = frames[:-(count%16)]
+        #print(frames.shape)
+        segments = frames.reshape([-1, 16, 112, 112, 3])
+        #print(segments.shape)
+        
+        print("SEGMENT SHAPE: %s" % (str(segments.shape)))
+        
+#        if segments.shape[0] % 32 != 0:
+#            print("REMOVING SEGMENTS: %d" % (segments.shape[0]%32))
+#            segments = segments[:-(segments.shape[0]%32)]
+        return segments
 
     def __str__(self):
         return "You are print video object, use one of my methods, My filename is "+self.filename

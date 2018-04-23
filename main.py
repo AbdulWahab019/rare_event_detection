@@ -1,29 +1,30 @@
 from algorithm import Algorithm
-from ucsd_dataset import ucsd_dataset
+from dataset import dataset
+
+TOTAL_EPOCHS = 1000
 
 def main():
-    ped1 = ucsd_dataset(pedestrian="1")
+    ds = dataset()
 
-    algorithm = Algorithm(dataset=ped1, model_dir="./models/Ped1_Model")
-    algorithm.build()
+    algorithm = Algorithm(dataset=ds, model_dir="./models/UCF_Train")
 
-    print("Testing initial model...")
-    labels, pred, time = algorithm.test()
-    print("LABELS: " + str(labels))
-    print("PREDICTIONS: " + str(labels))
-    print("Done. AUC: Elapsed Time: %.5f sec" % (time))
+    #print("Testing initial model...")
+    #fpr, tpr, auc1, time = algorithm.test()
+    #print("FPR: " + str(fpr))
+    #print("TPR: " + str(tpr))
+    #print("Done. AUC:%f Elapsed Time: %.5f sec" % (auc1, time))
 
     print("Training model...")
-    cost_curve, time = algorithm.train(total_epoch=50, save_interval=5)
+    cost_curve, time = algorithm.train(total_epoch=TOTAL_EPOCHS, save_interval=200)
     print("Done. Elapsed Time: %.5f sec" % (time))
 
     print("Testing trained model...")
-    labels, pred, time = algorithm.test()
-    print("LABELS: " + str(labels))
-    print("PREDICTIONS: " + str(labels))
-    print("Done. AUC: Elapsed Time: %.5f sec" % (time))
+    fpr, tpr, auc2, time = algorithm.test()
+    print("FPR: " + str(fpr))
+    print("TPR: " + str(tpr))
+    print("Done. AUC:%f Elapsed Time: %.5f sec" % (auc2, time))
 
-    print("COST CURVE: "+str(cost_curve))
+    print("After %d iterations, the model was able to have an AUC of %f." % (TOTAL_EPOCHS, auc2))
 
 if __name__ == "__main__":
     main()

@@ -7,9 +7,8 @@ MODEL_DIR = "./models/MY_TEST_MODEL"
 class TestAlgorithm(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.dataset = ucsd_dataset(pedestrian="2")
+        cls.dataset = ucsd_dataset(pedestrian="1")
         cls.myNewAlgorithm = Algorithm(dataset=cls.dataset, model_dir=MODEL_DIR)
-        cls.myNewAlgorithm.build()
 
     @classmethod
     def tearDownClass(cls):
@@ -27,20 +26,16 @@ class TestAlgorithm(unittest.TestCase):
 
     def test_test(self):
         algo = self.__class__.myNewAlgorithm
-        labels, pred, time = algo.test()
-        self.assertTrue(isinstance(labels, list) and isinstance(pred, list),
-                        "Did not return label and pred lists.")
+        fpr, tpr, auc, time = algo.test()
         self.assertTrue(isinstance(time, float) and time > 0.0,
-                        "The value for time is not valid: %f" % (time))
+                     "The value for time is not valid: %f" % (time))
 
     def test_save_load(self):
         algo = self.__class__.myNewAlgorithm
-        #_, _, auc1, _ = algo.test()
+        fpr, tpr, auc1, _ = algo.test()
         algo.save_model()
-        algo2 = Algorithm(dataset=self.__class__.dataset)
-        algo2.load_model(MODEL_DIR)
-        #_, _, auc2, _ = algo2.test()
-
-        #self.assertEqual(auc1, auc2,
-         #                "Loaded algorithm test had an AUC of %f, but should have been %f" % (auc2, auc1))
-
+        algo2 = Algorithm(dataset=self.__class__.dataset, model_dir=MODEL_DIR)
+        algo2.load_model()
+        fpr, tpr, auc2, _ = algo2.test()
+        self.assertEqual(auc1, auc2, "Loaded algorithm test had an AUC of %f, but should have been %f" % (auc2, auc1))
+        print("new model has AUC of %f and old model had %f" % (auc2, auc1))

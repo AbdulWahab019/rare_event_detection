@@ -1,7 +1,11 @@
 import random, time
 import numpy as np
 import os
-from model import Model
+import math
+from video import Video
+from models.c3d_model import C3DModel
+from models.bc_model import BCModel
+from sklearn.metrics import roc_curve, auc
 
 
 class Algorithm:
@@ -11,12 +15,10 @@ class Algorithm:
         self.img_width = kwargs.get('img_width', 112)
         self.img_height = kwargs.get('img_height', 112)
         self.__split_train()
-        self.model_dir = kwargs.get('model_dir', "./models")
-        self.model = Model()
+        self.model_dir = kwargs.get('model_dir', "./models/AlgorithmTest")
+        self.c3d_model = C3DModel()
+        self.bc_model = BCModel()
         self.iter = 0
-
-    def build(self):
-        self.model.build()
 
     def train(self, **kwargs):
         total_epoch = kwargs.get('total_epoch', 10)
@@ -28,9 +30,29 @@ class Algorithm:
         for epoch in range(total_epoch):
             print("Training EPOCH #%d..." % (epoch))
             begin_epoch = time.time()
-            positive_bag = self.__create_bag(self.train_anom)
-            negative_bag = self.__create_bag(self.train_norm)
-            cost = self.model.train(positive_bag, negative_bag)
+            
+            positive_bag = self.__create_bags(self.train_anom, 1)
+            print("Length:",positive_bag.shape[0])
+            split_pos = np.array_split(positive_bag, math.ceil(positive_bag.shape[0]/16))
+            print("done.")
+            for i in range(len(split_pos)):
+              print("FRAMES SHAPE: %s" % (str(split_pos[i].shape)))
+              bag, _ = self.c3d_model.predict(split_pos[i])
+              split_pos[i] = bag
+              
+            negative_bag = self.__create_bags(self.train_norm, 1)
+            split_neg = np.array_split(negative_bag, math.ceil(negative_bag.shape[0]/16))
+            for i in range(len(split_neg)):
+              bag, _ = self.c3d_model.predict(split_neg[i])
+              split_neg[i] = bag
+            
+            final_pos = np.vstack(split_pos)
+            final_pos = final_pos if len(final_pos)%32 == 0 else final_pos[:-(len(final_pos)%32)]
+            
+            final_neg = np.vstack(split_neg)
+            final_neg = final_neg if len(final_neg)%32 == 0 else final_neg[:-(len(final_neg)%32)]
+
+            cost = self.bc_model.train(final_pos, final_neg)
             end_epoch = time.time()
             print("Finished. Cost: %.5f. Time Elapsed: %.5f sec." % (cost,(end_epoch-begin_epoch)))
             cost_curve.append(cost)
@@ -43,72 +65,80 @@ class Algorithm:
         return cost_curve, (end_train-begin_train)
 
     def test(self):
-        for video in self.dataset.testing:
-            video.resize(self.img_width, self.img_height)
-        test_videos = [video.getFrames() for video in self.dataset.testing]
-        test_labels = [int(video.getAnomaly()) for video in self.dataset.testing]
-
-        bags = []
-        for video in test_videos:
-            bag = []
-            num_of_segments = int(len(video) / 4)
-            frame_index = 0
-            for i in range(num_of_segments):
-                segment = np.array([video[frame_index]])
-                frame_index += 1
-                for j in range(3):
-                    segment = np.vstack((segment, [video[frame_index]]))
-                    frame_index += 1
-                bag.append(segment)
-            bags.append(bag)
-
+        count = 0
+        test_labels = []
         predictions = []
+        
         start = time.time()
-        for video in bags:
-            video = np.array(video)
-            scores, _ = self.model.predict(video)
+        for row in self.dataset.testing:
+            count += 1
+            print("Loading video: %s (%d of %d)..." % (row[0], count, len(self.dataset.testing)))
+            video = Video(row[0], row[1])
+            video.resize(self.img_width, self.img_height)
+            frames = np.array(video.getSegments())
+            print("FRAMES SHAPE: %s" % (str(frames.shape)))
+            if frames.shape[0] == 0:
+              continue
+            features, _ = self.c3d_model.predict(frames)
+            print("FEATURES SHAPE: %s" % (str(features.shape)))
+            scores, _ = self.bc_model.predict(features)
             predictions.append(max(scores))
+            test_labels.append(int(row[1]))
+            
         end = time.time()
 
-        return test_labels, predictions, (end-start)
+        print("TRUE LABELS:")
+        print(test_labels)
+        print("SCORES:")
+        print([p[0] for p in predictions])
+        print("PREDICTIONS:")
+        print([round(p[0]) for p in predictions])
 
+        _fpr, _tpr, _ = roc_curve(test_labels, predictions)
+        _auc = auc(_fpr, _tpr)
+
+        return _fpr, _tpr, _auc, (end-start)
 
     def save_model(self):
-        self.model.saveModel(self.model_dir + '/model')
+        self.bc_model.save_model(self.model_dir + '/model')
 
-    def load_model(self, dir):
-        self.model.loadModel(dir + '/model')
+    def load_model(self):
+        self.bc_model.load_model(self.model_dir + '/model')
 
     def __split_train(self):
         train = self.dataset.training
         self.train_norm = []
         self.train_anom = []
         for t in train:
-            t.resize(self.img_width, self.img_height)
-            if t.getAnomaly() == '0':
+            if t[1] == '0':
                 self.train_norm.append(t)
             else:
                 self.train_anom.append(t)
 
-    def __create_bag(self, video_collection):
-        video = random.choice(video_collection)
-        video_frames = video.getFrames()
-        num_of_segments = int(len(video_frames)/4)
-        frame_index = 0
-        bag = []
-        for i in range(num_of_segments):
-            segment = np.array([video_frames[frame_index]])
-            frame_index += 1
-            for j in range(3):
-                segment = np.vstack((segment, [video_frames[frame_index]]))
-                frame_index += 1
-            bag.append(segment)
-        return bag
-
+    def __create_bags(self, video_collection, total_bags=1):
+        bags = []
+        count = 0
+        for current_bag in range(total_bags):
+            count += 1
+            video = None
+            while True:
+              row = random.choice(video_collection)
+              print("Loading video: %s..." % (row[0]))
+              video = Video(row[0],row[1])
+              video.resize(self.img_width, self.img_height)
+              instances = video.getSegments()
+              print("FINISHED!!!")
+              print("Loaded video shape: %s" % (str(instances.shape)))
+              if instances.shape[0] > 0:
+                break
+            bags.append(instances)
+        bags = np.vstack(bags)
+        print("Loaded video of shape: %s" % (str(bags.shape)))
+        return bags
 
     def __save_interval(self):
         dir = self.model_dir + "/intervals"
         if not os.path.exists(dir):
             os.makedirs(dir)
-        self.model.saveModel(dir + "/save-" + ("%05d/model"%self.iter))
+        self.bc_model.save_model(dir + "/save-" + ("%05d/model"%self.iter))
         self.iter += 1
