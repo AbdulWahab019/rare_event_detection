@@ -26,7 +26,7 @@ Included in the repo is a conda environment file called `environment.yml`. This 
 In order to run the application, you will need to download the pre-trained C3D model (~300 MB) and place it in the `/pretrained_models` folder. The pre-trained model is hosted [here](https://www.dropbox.com/s/u5fxqzks2pkaolx/c3d_ucf101_finetune_whole_iter_20000_TF.model?dl=0).
 
 ## Using the Application
-**TODO: Include a detailed description on how to use the system.**
+To run the training and testing for the current `data.csv` file in the dataset folder, simply run `python main.py`. This will run the `main.py` script, which uses the `Algorithm` class to train the model and then evalute its accuracy on a test set.
 
 ## Testing the Application
 This project uses the `unittest` module included in Python's core library. All tests are stored in the `/test` directory. Each test class **must** have `_test` appended to the end of the `.py` file (i.e. `mytestclass.py` doesn't work, while `mytestclass_test.py` does). To run the tests you can run the command `python -m unittest discover -v -s test -p *_test.py` in the working directory.
